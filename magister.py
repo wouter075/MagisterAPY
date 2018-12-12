@@ -1,7 +1,12 @@
 """
     MagisterAPI
+    todo: every part should have his own file:
+    - student
+    - teacher
+    - grades
 """
 import random
+import datetime
 from getpass import getpass
 from urllib.parse import unquote
 import requests
@@ -130,7 +135,29 @@ class Magister:
         else:
             return False
 
+    def gettodaylessonid(self):
+        """ this function retrieves today lesson ids """
+        # todo error handling
+        today = str(datetime.date.today())
+        idlist = []
+
+        if self.userId == 0:
+            # when no id, get the id from the profile
+            self.profileinfo()
+
+        r = self.__s.get(self.school + "/api/medewerkers/" + str(self.userId) +
+                         "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.__headers)
+
+        response = json.loads(r.text)
+        if len(response["items"]) > 0:
+            for i in response["items"]:
+                idlist.append(i["id"])
+
+            return idlist
+        else:
+            return False
+
 
 m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
-print(m.getstudentbyname("sjaak afhaak"))
+print(m.gettodaylessonid())
 
