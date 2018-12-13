@@ -11,6 +11,16 @@ from getpass import getpass
 from urllib.parse import unquote
 import requests
 import json
+from enum import Enum
+
+
+class Reason(Enum):
+    Telaat = 14
+    Uitgestuurd = 25
+    Absent = 47
+    Aanwezig = 52
+    Boekenvergeten = 54
+    Huiswerkvergeten = 55
 
 
 class Magister:
@@ -157,7 +167,29 @@ class Magister:
         else:
             return False
 
+    def setstudentreason(self, personid, hourid, reasonid):
+        """ this function sets the reason for a person on a certain day """
+        if not isinstance(reasonid, Reason):
+            raise TypeError('reasonid must be an instance of Reason Enum')
+
+        if self.userId == 0:
+            # when no id, get the id from the profile
+            self.profileinfo()
+
+        data = {
+            "persoonId": personid,
+            "redenId": reasonid.value
+        }
+
+        r = self.__s.post("https://novacollege.magister.net/api/medewerkers/afspraken/" + str(hourid) +
+                          "/verantwoordingen", headers=self.__headers, json=data)
+
+        if r.status_code == 204:
+            return True
+        else:
+            return False
+
 
 m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
-print(m.gettodaylessonid())
+print(m.setstudentreason(185304, 12142666, Reason.Aanwezig))
 
