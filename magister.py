@@ -14,7 +14,7 @@ import json
 from enum import Enum
 
 
-class Reason(Enum):
+class Reden(Enum):
     Telaat = 14
     Uitgestuurd = 25
     Absent = 47
@@ -39,8 +39,8 @@ class Magister:
 
         # needed variables
         self.school = school
-        self.username = username
-        self.password = password
+        self.gebruikersnaam = username
+        self.wachtwoord = password
         self.filterName = school.replace("https://", "")
         self.authorizeUrl = "https://accounts.magister.net/connect/authorize?client_id=M6-" + self.filterName + \
                             "&redirect_uri=https%3A%2F%2F" + self.filterName + "%2Foidc%2Fredirect_callback.html" + \
@@ -50,8 +50,8 @@ class Magister:
                             "&nonce=" + randomhash() + "&acr_values=tenant%3A" + self.filterName
         self.__authUrl = "https://accounts.magister.net/challenge/"
         self.__accountUrl = "https://accounts.magister.net"
-        self.userProfile = {}
-        self.userId = 0
+        self.profiel = {}
+        self.persoonId = 0
 
         # start session
         self.__s = requests.Session()
@@ -80,7 +80,7 @@ class Magister:
         data = {
             "sessionId": self.__sessionId,
             "returnUrl": self.__returnUrl,
-            "username": self.username
+            "username": self.gebruikersnaam
         }
 
         # prapare headers
@@ -97,7 +97,7 @@ class Magister:
         data = {
             "sessionId": self.__sessionId,
             "returnUrl": self.__returnUrl,
-            "password": self.password
+            "password": self.wachtwoord
         }
 
         r4 = self.__s.post(self.__authUrl + "password", json=data, headers=headers)
@@ -116,22 +116,22 @@ class Magister:
             "X-XSRF-TOKEN": self.__xsrf
         }
 
-    def profileinfo(self):
+    def get_profiel(self):
         """ this function retrieves the users profile. """
         # todo error handling
         # todo do we need this in the future for the Persoon Id?
 
         r = self.__s.get(self.school + "/api/account?noCache=0", headers=self.__headers)
 
-        self.userProfile = json.loads(r.text)
-        self.userId = self.userProfile["Persoon"]["Id"]
+        self.profiel = json.loads(r.text)
+        self.persoonId = self.profiel["Persoon"]["Id"]
 
-        return self.userProfile
+        return self.profiel
 
-    def getstudentbyname(self, studentname):
-        """ this function retrieves the search result of a student name """
+    def get_student(self, zoekterm):
+        """ Deze method zoekt naar een student: naam en stamnummer kunnen worden gebruikt """
         # todo error handling
-        r = self.__s.get(self.school + "/api/leerlingen/zoeken?q=" + studentname + "&top=40&skip=0",
+        r = self.__s.get(self.school + "/api/leerlingen/zoeken?q=" + zoekterm + "&top=40&skip=0",
                          headers=self.__headers)
 
         response = json.loads(r.text)
@@ -140,43 +140,39 @@ class Magister:
         else:
             return False
 
-    def gettodaylessonid(self):
+    def get_afsprakenvandaag(self):
         """ this function retrieves today lesson ids """
         # todo error handling
         today = str(datetime.date.today())
         idlist = []
 
-        if self.userId == 0:
+        if self.persoonId == 0:
             # when no id, get the id from the profile
-            self.profileinfo()
+            self.get_profiel()
 
         r = self.__s.get(self.school + "/api/medewerkers/" + str(self.userId) +
                          "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.__headers)
 
         response = json.loads(r.text)
         if len(response["items"]) > 0:
-            for i in response["items"]:
-                idlist.append(i["id"])
-
-            return idlist
+            return response["items"]
         else:
             return False
 
-    def setstudentreason(self, personid, hourid, reasonid):
-        """ this function sets the reason for a person on a certain day """
-        if not isinstance(reasonid, Reason):
-            raise TypeError('reasonid must be an instance of Reason Enum')
+    def set_studentreden(self, persoonId, afspraakId, redenId):
+        if not isinstance(redenId, Reden):
+            raise TypeError('redenId moet een instantie zijn van Reden')
 
-        if self.userId == 0:
+        if self.persoonId == 0:
             # when no id, get the id from the profile
-            self.profileinfo()
+            self.get_profiel()
 
         data = {
-            "persoonId": personid,
-            "redenId": reasonid.value
+            "persoonId": persoonId,
+            "redenId": redenId.value
         }
 
-        r = self.__s.post("https://novacollege.magister.net/api/medewerkers/afspraken/" + str(hourid) +
+        r = self.__s.post("https://novacollege.magister.net/api/medewerkers/afspraken/" + str(afspraakId) +
                           "/verantwoordingen", headers=self.__headers, json=data)
 
         if r.status_code == 204:
@@ -186,5 +182,5 @@ class Magister:
 
 
 m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
-print(m.profileinfo())
+print(m.get_profiel())
 
