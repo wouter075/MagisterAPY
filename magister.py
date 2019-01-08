@@ -12,6 +12,7 @@ from urllib.parse import unquote
 import requests
 import json
 from enum import Enum
+from dateutil.parser import parse
 
 
 class Reden(Enum):
@@ -150,7 +151,7 @@ class Magister:
             # when no id, get the id from the profile
             self.get_profiel()
 
-        r = self.__s.get(self.school + "/api/medewerkers/" + str(self.userId) +
+        r = self.__s.get(self.school + "/api/medewerkers/" + str(self.persoonId) +
                          "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.__headers)
 
         response = json.loads(r.text)
@@ -180,7 +181,32 @@ class Magister:
         else:
             return False
 
+    def get_mentorstudenten(self):
+        r = self.__s.get(self.school + "/api/leerlingen/zoeken?q=**&top=40&skip=0&rol=mentor", headers=self.__headers)
+
+        return json.loads(r.text)
+
+    def get_studentabsenties(self, persoonId):
+        today = str(datetime.date.today())
+        r = self.__s.get(self.school + "/api/m6/leerlingen/" + str(persoonId) +
+                         "/verantwoordingen/maanden?begin=2018-08-01&einde=" + today, headers=self.__headers)
+        return json.loads(r.text)
+
+    def get_huidigafspraakid(self):
+        """ deze functie geeft het huidig afspraak id terug """
+        afspraken = self.get_afsprakenvandaag()
+        ct = datetime.datetime.utcnow()
+        for a in afspraken:
+            bt = parse(a["begin"]).replace(tzinfo=None)
+            et = parse(a["einde"]).replace(tzinfo=None)
+            if bt <= ct <= et:
+                return a["id"]
+
+    def set_studentaanwezig(self, persoonId):
+        """ deze functie zet een student aanwezig op dit moment """
+        afspraakid = self.get_huidigafspraakid()
+        self.set_studentreden(persoonId, afspraakid, Reden.Aanwezig)
+
 
 m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
-print(m.get_profiel())
 
