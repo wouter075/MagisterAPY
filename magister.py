@@ -1,18 +1,15 @@
 """
     MagisterAPI
     todo: every part should have his own file:
-    - student
-    - teacher
-    - grades
+    - cijfers
+    - mentor
 """
 import random
-import datetime
 from getpass import getpass
 from urllib.parse import unquote
 import requests
 import json
 from enum import Enum
-from dateutil.parser import parse
 
 
 class Reden(Enum):
@@ -128,85 +125,4 @@ class Magister:
         self.persoonId = self.profiel["Persoon"]["Id"]
 
         return self.profiel
-
-    def get_student(self, zoekterm):
-        """ Deze method zoekt naar een student: naam en stamnummer kunnen worden gebruikt """
-        # todo error handling
-        r = self.__s.get(self.school + "/api/leerlingen/zoeken?q=" + zoekterm + "&top=40&skip=0",
-                         headers=self.__headers)
-
-        response = json.loads(r.text)
-        if response["items"]:
-            return response["items"]
-        else:
-            return False
-
-    def get_afsprakenvandaag(self):
-        """ this function retrieves today lesson ids """
-        # todo error handling
-        today = str(datetime.date.today())
-        idlist = []
-
-        if self.persoonId == 0:
-            # when no id, get the id from the profile
-            self.get_profiel()
-
-        r = self.__s.get(self.school + "/api/medewerkers/" + str(self.persoonId) +
-                         "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.__headers)
-
-        response = json.loads(r.text)
-        if len(response["items"]) > 0:
-            return response["items"]
-        else:
-            return False
-
-    def set_studentreden(self, persoonId, afspraakId, redenId):
-        if not isinstance(redenId, Reden):
-            raise TypeError('redenId moet een instantie zijn van Reden')
-
-        if self.persoonId == 0:
-            # when no id, get the id from the profile
-            self.get_profiel()
-
-        data = {
-            "persoonId": persoonId,
-            "redenId": redenId.value
-        }
-
-        r = self.__s.post("https://novacollege.magister.net/api/medewerkers/afspraken/" + str(afspraakId) +
-                          "/verantwoordingen", headers=self.__headers, json=data)
-
-        if r.status_code == 204:
-            return True
-        else:
-            return False
-
-    def get_mentorstudenten(self):
-        r = self.__s.get(self.school + "/api/leerlingen/zoeken?q=**&top=40&skip=0&rol=mentor", headers=self.__headers)
-
-        return json.loads(r.text)
-
-    def get_studentabsenties(self, persoonId):
-        today = str(datetime.date.today())
-        r = self.__s.get(self.school + "/api/m6/leerlingen/" + str(persoonId) +
-                         "/verantwoordingen/maanden?begin=2018-08-01&einde=" + today, headers=self.__headers)
-        return json.loads(r.text)
-
-    def get_huidigafspraakid(self):
-        """ deze functie geeft het huidig afspraak id terug """
-        afspraken = self.get_afsprakenvandaag()
-        ct = datetime.datetime.utcnow()
-        for a in afspraken:
-            bt = parse(a["begin"]).replace(tzinfo=None)
-            et = parse(a["einde"]).replace(tzinfo=None)
-            if bt <= ct <= et:
-                return a["id"]
-
-    def set_studentaanwezig(self, persoonId):
-        """ deze functie zet een student aanwezig op dit moment """
-        afspraakid = self.get_huidigafspraakid()
-        self.set_studentreden(persoonId, afspraakid, Reden.Aanwezig)
-
-
-m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
 
