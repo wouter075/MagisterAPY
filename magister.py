@@ -22,7 +22,26 @@ class Reden(Enum):
 
 
 class Magister:
+    school = ""
+    gebruikersnaam = ""
+    wachtwoord = ""
+    filterName = ""
+    authorizeUrl = ""
+    profiel = {}
+    persoonId = 0
+    returnUrl = ""
+    sessionId = ""
+    xsrf = ""
+    bearerToken = ""
+    headers = {}
+    s = requests.Session()
+
     def __init__(self, school, username, password):
+        self.__accountUrl = "https://accounts.magister.net"
+        self.__authUrl = "https://accounts.magister.net/challenge/"
+        self.login(school, username, password)
+
+    def login(self, school, username, password):
         def randomhash():
             return '%032x' % random.getrandbits(128)
 
@@ -46,72 +65,67 @@ class Magister:
                             "magister.mdv.broker.read%20magister.dnn.roles.read" + \
                             "&state=" + randomhash() + \
                             "&nonce=" + randomhash() + "&acr_values=tenant%3A" + self.filterName
-        self.__authUrl = "https://accounts.magister.net/challenge/"
-        self.__accountUrl = "https://accounts.magister.net"
         self.profiel = {}
         self.persoonId = 0
 
-        # start session
-        self.__s = requests.Session()
-
         # get authorizeUrl
-        r = self.__s.get(self.authorizeUrl, allow_redirects=False)
+        r = self.s.get(self.authorizeUrl, allow_redirects=False)
 
         if r.status_code != 302:
             raise RuntimeError("ReturnUrl error " + str(r.status_code))
 
-        self.__returnUrl = unquote(r.headers['Location'].split("returnUrl=")[1])
+        self.returnUrl = unquote(r.headers['Location'].split("returnUrl=")[1])
 
-        r2 = self.__s.get(r.headers['Location'], allow_redirects=False)
+        r2 = self.s.get(r.headers['Location'], allow_redirects=False)
         if r2.status_code != 302:
             raise RuntimeError("SessionId error " + str(r2.status_code))
 
-        self.__sessionId = r2.headers['Location'] \
+        self.sessionId = r2.headers['Location'] \
             .split("?")[1] \
             .split("&")[0] \
             .split("=")[1]
 
         # get xsrf
-        self.__xsrf = r2.headers['Set-Cookie'].split("XSRF-TOKEN=")[1].split(";")[0]
+        self.xsrf = r2.headers['Set-Cookie'].split("XSRF-TOKEN=")[1].split(";")[0]
 
         # prepare data
         data = {
-            "sessionId": self.__sessionId,
-            "returnUrl": self.__returnUrl,
+            "sessionId": self.sessionId,
+            "returnUrl": self.returnUrl,
             "username": self.gebruikersnaam
         }
 
         # prapare headers
         headers = {
-            "X-XSRF-TOKEN": self.__xsrf
+            "X-XSRF-TOKEN": self.xsrf
         }
 
         # post username
-        r3 = self.__s.post(self.__authUrl + "username", json=data, headers=headers)
+        r3 = self.s.post(self.__authUrl + "username", json=data, headers=headers)
         if r3.status_code != 200:
             raise RuntimeError("Username error " + str(r3.status_code))
 
         # post password
         data = {
-            "sessionId": self.__sessionId,
-            "returnUrl": self.__returnUrl,
+            "sessionId": self.sessionId,
+            "returnUrl": self.returnUrl,
             "password": self.wachtwoord
         }
 
-        r4 = self.__s.post(self.__authUrl + "password", json=data, headers=headers)
+        r4 = self.s.post(self.__authUrl + "password", json=data, headers=headers)
         if r4.status_code != 200:
             raise RuntimeError("Password error " + str(r4.status_code))
 
-        r5 = self.__s.get(self.__accountUrl + self.__returnUrl, headers=headers, allow_redirects=False)
+        r5 = self.s.get(self.__accountUrl + self.returnUrl, headers=headers, allow_redirects=False)
         if r5.status_code != 302:
             raise RuntimeError("BearerToken error " + str(r5.status_code))
 
-        self.__bearerToken = r5.headers["Location"].split("&access_token=")[1].split("&")[0]
+        self.bearerToken = r5.headers["Location"].split("&access_token=")[1].split("&")[0]
 
         # set headers to use everywhere!
-        self.__headers = {
-            "Authorization": "Bearer " + self.__bearerToken,
-            "X-XSRF-TOKEN": self.__xsrf
+        self.headers = {
+            "Authorization": "Bearer " + self.bearerToken,
+            "X-XSRF-TOKEN": self.xsrf
         }
 
     def get_profiel(self):
@@ -119,7 +133,7 @@ class Magister:
         # todo error handling
         # todo do we need this in the future for the Persoon Id?
 
-        r = self.__s.get(self.school + "/api/account?noCache=0", headers=self.__headers)
+        r = self.s.get(self.school + "/api/account?noCache=0", headers=self.headers)
 
         self.profiel = json.loads(r.text)
         self.persoonId = self.profiel["Persoon"]["Id"]

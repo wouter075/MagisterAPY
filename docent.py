@@ -1,13 +1,15 @@
 import datetime
 import json
 
+import requests
+
 from magister import Magister
 from dateutil.parser import parse
 
 
 class Docent(Magister):
-    def __init__(self, school, username, password):
-        Magister.__init__(self, school, username, password)
+    def __init__(self, *args, **kwargs):
+        super(Docent, self).__init__(*args, **kwargs)
 
     def get_afsprakenvandaag(self):
         """ this function retrieves today lesson ids """
@@ -19,8 +21,8 @@ class Docent(Magister):
             # when no id, get the id from the profile
             self.get_profiel()
 
-        r = self.__s.get(self.school + "/api/medewerkers/" + str(self.persoonId) +
-                         "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.__headers)
+        r = self.s.get(self.school + "/api/medewerkers/" + str(self.persoonId) +
+                         "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.headers)
 
         response = json.loads(r.text)
         if len(response["items"]) > 0:
