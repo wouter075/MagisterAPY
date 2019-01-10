@@ -6,10 +6,39 @@ import requests
 from magister import Magister
 from dateutil.parser import parse
 
+from student import Student
+from magister import Reden
+
 
 class Docent(Magister):
-    def __init__(self, *args, **kwargs):
-        super(Docent, self).__init__(*args, **kwargs)
+    def __init__(self, school, username, password):
+        Magister.__init__(self, school, username, password)
+
+    def set_studentaanwezig(self, persoonId):
+        """ deze functie zet een student aanwezig op dit moment """
+        afspraakid = Docent.get_huidigafspraakid()
+        return self.set_studentreden(persoonId, afspraakid, Reden.Aanwezig)
+
+    def set_studentreden(self, persoonId, afspraakId, redenId):
+        if not isinstance(redenId, Reden):
+            raise TypeError('redenId moet een instantie zijn van Reden')
+
+        if self.persoonId == 0:
+            # when no id, get the id from the profile
+            self.get_profiel()
+
+        data = {
+            "persoonId": persoonId,
+            "redenId": redenId.value
+        }
+
+        r = self.s.post("https://novacollege.magister.net/api/medewerkers/afspraken/" + str(afspraakId) +
+                          "/verantwoordingen", headers=self.headers, json=data)
+
+        if r.status_code == 204:
+            return True
+        else:
+            return False
 
     def get_afsprakenvandaag(self):
         """ this function retrieves today lesson ids """
