@@ -39,6 +39,7 @@ class Magister:
     bearerToken = ""
     headers = {}
     s = requests.Session()
+    authCode = "a87ab8057fa92a4775"
 
     def __init__(self, school, username, password):
         self.__accountUrl = "https://accounts.magister.net"
@@ -47,7 +48,8 @@ class Magister:
 
     def login(self, school, username, password):
         def randomhash():
-            return '%032x' % random.getrandbits(128)
+            # return '%032x' % random.getrandbits(128)
+            return "2dd6aa4a08a74c3615c7387ca2b34400"
 
         if "https://" not in school and "magister.net" not in school:
             raise ValueError('Wrong url format, needs to be: https://schooname.magister.net')
@@ -72,6 +74,8 @@ class Magister:
         self.profiel = {}
         self.persoonId = 0
 
+        print(randomhash())
+
         # get authorizeUrl
         r = self.s.get(self.authorizeUrl, allow_redirects=False)
 
@@ -94,6 +98,7 @@ class Magister:
 
         # prepare data
         data = {
+            "authCode": self.authCode,
             "sessionId": self.sessionId,
             "returnUrl": self.returnUrl,
             "username": self.gebruikersnaam
@@ -106,11 +111,15 @@ class Magister:
 
         # post username
         r3 = self.s.post(self.__authUrl + "username", json=data, headers=headers)
+
+        print(r3.text)
+
         if r3.status_code != 200:
             raise RuntimeError("Username error " + str(r3.status_code))
 
         # post password
         data = {
+            "authCode": self.authCode,
             "sessionId": self.sessionId,
             "returnUrl": self.returnUrl,
             "password": self.wachtwoord
