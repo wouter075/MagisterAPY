@@ -48,8 +48,8 @@ class Magister:
 
     def login(self, school, username, password):
         def randomhash():
-            # return '%032x' % random.getrandbits(128)
-            return "2dd6aa4a08a74c3615c7387ca2b34400"
+            return '%032x' % random.getrandbits(128)
+            # return "2dd6aa4a08a74c3615c7387ca2b34400"
 
         if "https://" not in school and "magister.net" not in school:
             raise ValueError('Wrong url format, needs to be: https://schooname.magister.net')
@@ -73,8 +73,6 @@ class Magister:
                             "&nonce=" + randomhash() + "&acr_values=tenant%3A" + self.filterName
         self.profiel = {}
         self.persoonId = 0
-
-        print(randomhash())
 
         # get authorizeUrl
         r = self.s.get(self.authorizeUrl, allow_redirects=False)
@@ -111,8 +109,6 @@ class Magister:
 
         # post username
         r3 = self.s.post(self.__authUrl + "username", json=data, headers=headers)
-
-        print(r3.text)
 
         if r3.status_code != 200:
             raise RuntimeError("Username error " + str(r3.status_code))
@@ -216,7 +212,7 @@ class Magister:
     def get_student(self, zoekterm):
         """ Deze method zoekt naar een student: naam en stamnummer kunnen worden gebruikt """
         # todo error handling
-        r = self.s.get(self.school + "/api/leerlingen/zoeken?q=" + zoekterm + "&top=40&skip=0",
+        r = self.s.get(self.school + "/api/leerlingen/zoeken?q=" + str(zoekterm) + "&top=40&skip=0",
                          headers=self.headers)
 
         response = json.loads(r.text)
@@ -234,4 +230,4 @@ class Magister:
 
 m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
 
-print(m.set_studentaanwezig(181617))
+print(m.get_student("wouter"))
