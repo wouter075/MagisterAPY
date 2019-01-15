@@ -4,16 +4,15 @@
     - cijfers
     - mentor
 """
+import os
 import random
-from getpass import getpass
-from urllib.parse import unquote
-import requests
-import json
-from enum import Enum
+import re
 import datetime
 import json
 import requests
 from dateutil.parser import parse
+from urllib.parse import unquote
+from enum import Enum
 
 
 class Reden(Enum):
@@ -39,7 +38,7 @@ class Magister:
     bearerToken = ""
     headers = {}
     s = requests.Session()
-    authCode = "a87ab8057fa92a4775"
+    authCode = ""
 
     def __init__(self, school, username, password):
         self.__accountUrl = "https://accounts.magister.net"
@@ -75,14 +74,14 @@ class Magister:
         self.persoonId = 0
 
         # get authorizeUrl
-        r = self.s.get(self.authorizeUrl, allow_redirects=False)
+        r0 = self.s.get(self.authorizeUrl, allow_redirects=False)
 
-        if r.status_code != 302:
-            raise RuntimeError("ReturnUrl error " + str(r.status_code))
+        if r0.status_code != 302:
+            raise RuntimeError("ReturnUrl error " + str(r0.status_code))
 
-        self.returnUrl = unquote(r.headers['Location'].split("returnUrl=")[1])
+        self.returnUrl = unquote(r0.headers['Location'].split("returnUrl=")[1])
 
-        r2 = self.s.get(r.headers['Location'], allow_redirects=False)
+        r2 = self.s.get(r0.headers['Location'], allow_redirects=False)
         if r2.status_code != 302:
             raise RuntimeError("SessionId error " + str(r2.status_code))
 
@@ -93,6 +92,21 @@ class Magister:
 
         # get xsrf
         self.xsrf = r2.headers['Set-Cookie'].split("XSRF-TOKEN=")[1].split(";")[0]
+        # prepare headers
+        headers = {
+            "X-XSRF-TOKEN": self.xsrf
+        }
+
+        # get authCode
+        r = self.s.get("https://accounts.magister.net/js/account.js", headers=headers)
+        # print(r.text)
+
+        result = re.search('M="(.*)",N=func', r.text)
+        authcodel = result.group(1)
+        result = re.search('I="(.*)",T=func', r.text)
+        authcodef = result.group(1)
+
+        self.authCode = authcodef + authcodel
 
         # prepare data
         data = {
@@ -100,11 +114,6 @@ class Magister:
             "sessionId": self.sessionId,
             "returnUrl": self.returnUrl,
             "username": self.gebruikersnaam
-        }
-
-        # prapare headers
-        headers = {
-            "X-XSRF-TOKEN": self.xsrf
         }
 
         # post username
@@ -228,6 +237,7 @@ class Magister:
         return json.loads(r.text)
 
 
-m = Magister("https://novacollege.magister.net", "hlw1404", getpass("Password: "))
+m = Magister(os.environ["school"], os.environ["user"], os.environ["password"])
 
-print(m.get_student("wouter"))
+
+
