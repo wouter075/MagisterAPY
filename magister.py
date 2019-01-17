@@ -15,6 +15,15 @@ from urllib.parse import unquote
 from enum import Enum
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
 class Reden(Enum):
     Telaat = 14
     Uitgestuurd = 25
@@ -24,7 +33,7 @@ class Reden(Enum):
     Huiswerkvergeten = 55
 
 
-class Magister:
+class MagisterBase:
     school = ""
     gebruikersnaam = ""
     wachtwoord = ""
@@ -145,6 +154,9 @@ class Magister:
             "Authorization": "Bearer " + self.bearerToken,
             "X-XSRF-TOKEN": self.xsrf
         }
+        print("profiel ophalen")
+        p = self.get_profiel()
+        print(self.persoonId)
 
     def get_profiel(self):
         """ this function retrieves the users profile. """
@@ -195,7 +207,7 @@ class Magister:
             self.get_profiel()
 
         r = self.s.get(self.school + "/api/medewerkers/" + str(self.persoonId) +
-                         "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.headers)
+                       "/afspraken?begin=" + today + "&einde=" + today + "&status=actief", headers=self.headers)
 
         response = json.loads(r.text)
         if len(response["items"]) > 0:
@@ -222,7 +234,7 @@ class Magister:
         """ Deze method zoekt naar een student: naam en stamnummer kunnen worden gebruikt """
         # todo error handling
         r = self.s.get(self.school + "/api/leerlingen/zoeken?q=" + str(zoekterm) + "&top=40&skip=0",
-                         headers=self.headers)
+                       headers=self.headers)
 
         response = json.loads(r.text)
         if response["items"]:
@@ -233,11 +245,18 @@ class Magister:
     def get_studentabsenties(self, persoonId):
         today = str(datetime.date.today())
         r = self.s.get(self.school + "/api/m6/leerlingen/" + str(persoonId) +
-                         "/verantwoordingen/maanden?begin=2018-08-01&einde=" + today, headers=self.headers)
+                       "/verantwoordingen/maanden?begin=2018-08-01&einde=" + today, headers=self.headers)
         return json.loads(r.text)
+
+
+class Magister(MagisterBase, metaclass=Singleton):
+    pass
 
 
 m = Magister(os.environ["school"], os.environ["user"], os.environ["password"])
 
+print(m.get_profiel())
 
+m = Magister(os.environ["school"], os.environ["user"], os.environ["password"])
 
+print(m.get_profiel())
